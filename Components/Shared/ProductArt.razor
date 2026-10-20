@@ -1,0 +1,60 @@
+@if (!string.IsNullOrWhiteSpace(Product.ImageUrl))
+{
+    <div class="aspect-[6/7] overflow-hidden @Class">
+        <img src="@Product.ImageUrl" alt="@Product.Name" loading="lazy"
+             class="size-full object-cover" />
+    </div>
+}
+else
+{
+    @* Inline SVG product illustrations fallback *@
+    <svg viewBox="0 0 120 140" role="img" aria-label="@Product.Name" class="aspect-[6/7] @Class">
+        @switch (Product.Art)
+        {
+            case "cone":
+                <path d="M24 38h72L76 100H44z" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" stroke-linejoin="round" />
+                <path d="M37 38l11 62M60 38v62M83 38L72 100" stroke="#1d1712" stroke-opacity=".45" stroke-width="2" />
+                <rect x="36" y="100" width="48" height="8" fill="#e4d5b4" stroke="#1d1712" stroke-width="3" />
+                <path d="M44 108h32l4 24H40z" fill="#f2ead8" stroke="#1d1712" stroke-width="3" stroke-linejoin="round" />
+                break;
+            case "kettle":
+                <path d="M30 62h52l6 62H24z" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" stroke-linejoin="round" />
+                <rect x="38" y="50" width="36" height="12" fill="#1d1712" />
+                <path d="M84 70l22-28" stroke="#1d1712" stroke-width="6" stroke-linecap="round" fill="none" />
+                <path d="M30 74q-20 0-20 24t20 20" fill="none" stroke="#1d1712" stroke-width="5" />
+                <circle cx="56" cy="44" r="5" fill="#b0321a" stroke="#1d1712" stroke-width="2" />
+                break;
+            case "scale":
+                <rect x="22" y="56" width="76" height="14" fill="#e4d5b4" stroke="#1d1712" stroke-width="3" />
+                <rect x="12" y="74" width="96" height="42" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" />
+                <rect x="66" y="84" width="32" height="16" fill="#f2ead8" stroke="#1d1712" stroke-width="2" />
+                <circle cx="30" cy="95" r="6" fill="#f2ead8" stroke="#1d1712" stroke-width="2" />
+                break;
+            case "grinder":
+                <path d="M34 20h52l-8 34H42z" fill="#e4d5b4" stroke="#1d1712" stroke-width="3" stroke-linejoin="round" />
+                <rect x="38" y="54" width="44" height="52" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" />
+                <path d="M82 30h24v-12" fill="none" stroke="#1d1712" stroke-width="5" stroke-linecap="round" />
+                <rect x="28" y="106" width="64" height="14" fill="#1d1712" />
+                <path d="M46 70h28M46 80h28M46 90h28" stroke="#f2ead8" stroke-width="2" />
+                break;
+            case "box":
+                <rect x="18" y="48" width="84" height="76" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" />
+                <rect x="12" y="34" width="96" height="18" fill="#1d1712" fill-opacity=".35" stroke="#1d1712" stroke-width="3" />
+                <path d="M60 34v90" stroke="#f2ead8" stroke-width="6" />
+                <rect x="38" y="76" width="44" height="26" fill="#f2ead8" stroke="#1d1712" stroke-width="2" />
+                break;
+            default: @* coffee bag *@
+                <path d="M22 28h76l7 100q-45 9-90 0z" fill="@Product.Tone" stroke="#1d1712" stroke-width="3" stroke-linejoin="round" />
+                <path d="M22 28h76v14H22z" fill="#1d1712" fill-opacity=".3" stroke="#1d1712" stroke-width="3" />
+                <rect x="34" y="60" width="52" height="50" fill="#f2ead8" stroke="#1d1712" stroke-width="2" />
+                <path d="M41 74h38M41 84h26M41 94h32" stroke="#1d1712" stroke-width="3" />
+                <circle cx="82" cy="104" r="7" fill="#b0321a" stroke="#1d1712" stroke-width="2" />
+                break;
+        }
+    </svg>
+}
+
+@code {
+    [Parameter, EditorRequired] public Product Product { get; set; } = default!;
+    [Parameter] public string? Class { get; set; }
+}

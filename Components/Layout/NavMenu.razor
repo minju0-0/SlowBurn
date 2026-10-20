@@ -1,0 +1,40 @@
+@rendermode InteractiveServer
+@implements IDisposable
+
+<header class="relative border-b-2 border-ink bg-paper">
+    <nav class="mx-auto flex max-w-6xl items-center gap-2 px-5 py-3" aria-label="Main">
+        <NavLink href="/" Match="NavLinkMatch.All" class="mr-auto flex items-center gap-2 font-display text-2xl font-bold leading-none">
+            <svg viewBox="0 0 24 24" class="size-7" aria-hidden="true">
+                <ellipse cx="12" cy="12" rx="8" ry="10.5" fill="#7b2d12" transform="rotate(25 12 12)" />
+                <path d="M8 4c6 5-2 11 4 16" stroke="#f2ead8" fill="none" stroke-width="2" />
+            </svg>
+            <span>Slow Burn</span>
+        </NavLink>
+
+        <ul id="site-links"
+            class="@(open ? "flex" : "hidden") absolute inset-x-0 top-full z-30 flex-col border-b-2 border-ink bg-paper px-5 py-2 md:static md:flex md:flex-row md:gap-1 md:border-0 md:bg-transparent md:p-0">
+            <li><NavLink href="/" Match="NavLinkMatch.All" class="nav-link" ActiveClass="is-active" @onclick="Close">Home</NavLink></li>
+            <li><NavLink href="/shop" class="nav-link" ActiveClass="is-active" @onclick="Close">Shop</NavLink></li>
+            <li><NavLink href="/brew" class="nav-link" ActiveClass="is-active" @onclick="Close">Brew guide</NavLink></li>
+        </ul>
+
+        <a href="/checkout" class="btn-ghost" aria-label="Cart, @count items">Cart <span class="num">(@count)</span></a>
+
+        <button type="button" class="btn-ghost md:hidden" @onclick="Toggle"
+                aria-expanded="@Labels.On(open)" aria-controls="site-links">
+            @(open ? "Close" : "Menu")
+        </button>
+    </nav>
+</header>
+
+@code {
+    private bool open;
+    private int count => CartStore.Count;
+
+    private void Toggle() => open = !open;
+    private void Close() => open = false;
+
+    protected override void OnInitialized() => CartStore.Changed += Refresh;
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => CartStore.Changed -= Refresh;
+}

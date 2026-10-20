@@ -1,0 +1,35 @@
+@inherits LayoutComponentBase
+
+<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">Skip to content</a>
+
+<div class="bg-ink px-4 py-2 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-paper">
+    Free standard shipping over $60 &middot; Roasted Monday, shipped Tuesday
+</div>
+
+<NavMenu />
+
+<main id="main">
+    @Body
+</main>
+
+<footer class="mt-24 border-t-2 border-ink bg-kraft">
+    <div class="mx-auto grid max-w-6xl gap-8 px-5 py-10 md:grid-cols-[2fr_1fr_1fr]">
+        <div>
+            <p class="font-display text-2xl font-bold">Slow Burn Roasters</p>
+            <p class="mt-2 max-w-sm text-sm text-muted">Small-lot coffee, roasted in five-kilo batches every Monday. Every bag prints its farm, altitude and roast date.</p>
+        </div>
+        <div>
+            <p class="eyebrow">Browse</p>
+            <ul class="mt-2 text-sm">
+                <li><a class="link-btn" href="/shop">Shop</a></li>
+                <li><a class="link-btn" href="/brew">Brew guide</a></li>
+                <li><a class="link-btn" href="/checkout">Checkout</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="eyebrow">Roastery counter</p>
+            <p class="mt-2 text-sm">Tue to Sat<br />8:00 to 17:00<br />Closed Sun and Mon (roast day)</p>
+        </div>
+    </div>
+    <p class="border-t border-ink/30 px-5 py-3 text-center font-mono text-[11px] uppercase tracking-widest text-muted">&copy; @DateTime.Now.Year Slow Burn Roasters</p>
+</footer>
