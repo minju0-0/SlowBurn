@@ -1,0 +1,337 @@
+@page "/shop"
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Shop | Slow Burn Roasters</PageTitle>
+
+@{
+    var list = Filtered.ToList();
+    var lines = CartStore.Items;
+    var left = CartStore.FreeShippingAt - CartStore.Net;
+    var pct = Math.Clamp((int)(CartStore.Net / CartStore.FreeShippingAt * 100), 0, 100);
+}
+
+<section class="mx-auto max-w-6xl px-5 pt-10">
+    <p class="eyebrow">Catalogue &middot; @SampleData.Products.Count items</p>
+    <h1 class="mt-2 text-4xl font-bold sm:text-5xl">The shop</h1>
+</section>
+
+<section class="mx-auto mt-6 max-w-6xl px-5" aria-label="Filters">
+    <div class="grid gap-4 border-y-2 border-ink py-4 md:grid-cols-[2fr_1fr] md:items-end">
+        <div>
+            <label for="q" class="field-label">Search</label>
+            <input id="q" type="search" class="field" placeholder="Origin, name or tasting note" @bind="search" @bind:event="oninput" />
+        </div>
+        <div>
+            <label for="sort" class="field-label">Sort by</label>
+            <select id="sort" class="field" @bind="sort">
+                <option value="featured">Featured</option>
+                <option value="price-asc">Price, low to high</option>
+                <option value="price-desc">Price, high to low</option>
+                <option value="name">Name, A to Z</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 pt-4" role="group" aria-label="Category">
+        <button type="button" class="chip" aria-pressed="@Labels.On(category is null)" @onclick="() => SetCategory(null)">All</button>
+        @foreach (var c in Enum.GetValues<ProductCategory>())
+        {
+            <button type="button" class="chip" aria-pressed="@Labels.On(category == c)" @onclick="() => SetCategory(c)">@c</button>
+        }
+    </div>
+
+    @if (category == ProductCategory.Beans)
+    {
+        <div class="flex flex-wrap gap-2 pt-3" role="group" aria-label="Roast level">
+            <button type="button" class="chip" aria-pressed="@Labels.On(roast is null)" @onclick="() => roast = null">Any roast</button>
+            @foreach (var r in Enum.GetValues<RoastLevel>().Where(r => r != RoastLevel.None))
+            {
+                <button type="button" class="chip" aria-pressed="@Labels.On(roast == r)" @onclick="() => roast = r">@r</button>
+            }
+        </div>
+    }
+</section>
+
+<div class="mx-auto mt-6 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_22rem] lg:items-start">
+    <div>
+        <p class="font-mono text-xs uppercase tracking-widest text-muted" aria-live="polite">Showing @list.Count of @SampleData.Products.Count</p>
+        @if (status is not null)
+        {
+            <p class="mt-2 border-l-4 border-ok bg-kraft px-3 py-2 text-sm" role="status">@status</p>
+        }
+
+        @if (list.Count == 0)
+        {
+            <div class="panel mt-4 p-8 text-center">
+                <p class="font-display text-2xl font-bold">Nothing matches that.</p>
+                <p class="mt-1 text-muted">Try a different word, or clear the filters to see everything.</p>
+                <button type="button" class="btn mt-4" @onclick="ClearFilters">Clear filters</button>
+            </div>
+        }
+        else
+        {
+            <div class="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                @foreach (var p in list)
+                {
+                    var wide = p.Category == ProductCategory.Bundles;
+                    <article class="@(wide ? "sm:col-span-2 sm:flex-row xl:col-span-3" : "") panel panel-lift flex flex-col overflow-hidden">
+                        
+                        <!-- 1. Lock the image container to 14rem (224px) when wide so it never squishes the text -->
+                        <div class="halftone flex items-center justify-center border-b-2 border-ink bg-kraft p-0 overflow-hidden @(wide ? "sm:border-b-0 sm:border-r-2" : "h-48 w-full")"
+                            style="@(wide ? "width: 14rem; min-width: 14rem; flex-shrink: 0;" : "height: 12rem;")">
+                            <ProductArt Product="p" Class="w-full h-full object-cover" />
+                        </div>
+
+                        <!-- 2. Add 'min-w-0' so the text properly fills the remaining space -->
+                        <div class="flex flex-1 min-w-0 flex-col p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="tag">@p.Category</span>
+                                @if (p.HasGrind) { <span class="tag">@p.Roast roast</span> }
+                                @if (p.IsNew) { <span class="tag-solid">New</span> }
+                                @if (p.Stock == 0) { <span class="tag-signal">Sold out</span> }
+                                else if (p.Stock <= 5) { <span class="tag-signal">Only @p.Stock left</span> }
+                            </div>
+                            <h2 class="mt-3 text-xl font-bold leading-tight">@p.Name</h2>
+                            <p class="font-mono text-[11px] uppercase tracking-wider text-muted">@p.Sku @(p.Origin.Length > 0 ? "· " + p.Origin : "")</p>
+                            <p class="mt-2 flex-1 text-sm text-muted">@p.Notes</p>
+                            <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                                <span class="num text-lg font-bold">@Money.Fmt(p.Price)</span>
+                                <div class="flex gap-2">
+                                    <button type="button" class="btn-ghost" @onclick="() => OpenQuick(p)">Details</button>
+                                    <button type="button" class="btn" disabled="@(p.Stock == 0)" @onclick="() => Add(p)" aria-label="Add @p.Name to cart">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+
+    <aside id="cart" aria-label="Cart"
+           class="@(cartOpen ? "max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:overflow-y-auto" : "max-lg:hidden") panel p-5 lg:sticky lg:top-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold">Cart <span class="num text-base text-muted">(@CartStore.Count)</span></h2>
+            <button type="button" class="btn-ghost lg:hidden" @onclick="() => cartOpen = false">Close</button>
+        </div>
+
+        @if (lines.Count == 0)
+        {
+            <p class="mt-4 border-2 border-dashed border-ink/50 p-4 text-sm text-muted">Nothing here yet. Add a bag and it will show up in this list.</p>
+        }
+        else
+        {
+            <ul class="mt-4 divide-y-2 divide-dashed divide-ink/30">
+                @foreach (var line in lines)
+                {
+                    <li class="flex gap-3 py-3">
+                        <div class="halftone h-fit border-2 border-ink bg-kraft p-0 overflow-hidden">
+                            <ProductArt Product="line.Product" Class="h-14 w-12 object-cover" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold leading-tight">@line.Product.Name</p>
+                            @if (line.Grind is not null)
+                            {
+                                <p class="font-mono text-[11px] uppercase tracking-wider text-muted">@Labels.Grind(line.Grind.Value)</p>
+                            }
+                            <div class="mt-2 flex items-center gap-1">
+                                <button type="button" class="icon-btn" aria-label="Decrease quantity of @line.Product.Name" @onclick="() => CartStore.SetQty(line, line.Quantity - 1)">&minus;</button>
+                                <span class="num w-8 text-center" aria-live="polite">@line.Quantity</span>
+                                <button type="button" class="icon-btn" aria-label="Increase quantity of @line.Product.Name" @onclick="() => CartStore.SetQty(line, line.Quantity + 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="num font-bold">@Money.Fmt(line.LineTotal)</p>
+                            <button type="button" class="link-btn" @onclick="() => CartStore.Remove(line)" aria-label="Remove @line.Product.Name">Remove</button>
+                        </div>
+                    </li>
+                }
+            </ul>
+
+            <div class="mt-4">
+                <p class="text-sm">@(left > 0 ? $"Add {Money.Fmt(left)} more for free standard shipping." : "Standard shipping is free on this order.")</p>
+                <div class="mt-2 h-3 border-2 border-ink" role="progressbar" aria-label="Progress to free shipping" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@pct">
+                    <div class="h-full bg-roast transition-all duration-300" style="width:@(pct)%"></div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label for="promo" class="field-label">Promo code</label>
+                <div class="flex gap-2">
+                    <input id="promo" class="field" placeholder="Try FIRSTPOUR" @bind="promoInput" @bind:event="oninput" />
+                    <button type="button" class="btn-ghost" @onclick="ApplyPromo">Apply</button>
+                </div>
+                @if (promoMsg is not null)
+                {
+                    <p class="@(promoOk ? "text-ok" : "text-signal") mt-1 font-mono text-xs" role="status">@promoMsg</p>
+                }
+            </div>
+
+            <dl class="mt-4 space-y-1 border-t-2 border-ink pt-3 text-sm">
+                <div class="flex justify-between"><dt>Subtotal</dt><dd class="num">@Money.Fmt(CartStore.Subtotal)</dd></div>
+                @if (CartStore.Discount > 0)
+                {
+                    <div class="flex justify-between text-ok"><dt>Promo @CartStore.Promo</dt><dd class="num">&minus;@Money.Fmt(CartStore.Discount)</dd></div>
+                }
+                <div class="flex justify-between text-lg font-bold"><dt>Total before shipping</dt><dd class="num">@Money.Fmt(CartStore.Net)</dd></div>
+            </dl>
+            <a href="/checkout" class="btn mt-4 w-full">Go to checkout</a>
+        }
+    </aside>
+</div>
+
+@if (!cartOpen && CartStore.Count > 0)
+{
+    <button type="button" class="btn fixed inset-x-5 bottom-4 z-30 shadow-block lg:hidden" @onclick="() => cartOpen = true">
+        View cart &middot; @CartStore.Count &middot; @Money.Fmt(CartStore.Net)
+    </button>
+}
+
+@if (quick is { } qv)
+{
+    <div class="fixed inset-0 z-50 flex items-end justify-center bg-ink/70 sm:items-center sm:p-4" @onclick="CloseQuick">
+        <div @ref="modalEl" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="qv-title"
+             class="panel max-h-[92vh] w-full max-w-2xl overflow-y-auto shadow-block focus:outline-none"
+             @onclick:stopPropagation="true" @onkeydown="OnModalKey">
+            <div class="grid sm:grid-cols-[13rem_1fr]">
+                <div class="halftone flex items-center justify-center border-b-2 border-ink bg-kraft p-0 overflow-hidden sm:w-56 sm:shrink-0 sm:border-b-0 sm:border-r-2">
+                    <ProductArt Product="qv" Class="w-full h-full object-cover" />
+                </div>
+                <div class="p-5">
+                    <p class="eyebrow">@qv.Sku @(qv.Origin.Length > 0 ? "· " + qv.Origin : "")</p>
+                    <h2 id="qv-title" class="mt-1 text-3xl font-bold leading-tight">@qv.Name</h2>
+                    <p class="mt-3 text-sm">@qv.Description</p>
+                    <ul class="mt-3 list-disc space-y-0.5 pl-5 text-sm text-muted">
+                        @foreach (var d in qv.Details) { <li>@d</li> }
+                    </ul>
+
+                    @if (qv.HasGrind)
+                    {
+                        <p class="field-label mt-4">Grind</p>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Grind size">
+                            @foreach (var g in Enum.GetValues<GrindSize>())
+                            {
+                                <button type="button" class="chip" aria-pressed="@Labels.On(qvGrind == g)" @onclick="() => qvGrind = g">@Labels.Grind(g)</button>
+                            }
+                        </div>
+                    }
+
+                    <p class="field-label mt-4">Quantity</p>
+                    <div class="flex items-center gap-1">
+                        <button type="button" class="icon-btn" aria-label="Decrease quantity" disabled="@(qvQty <= 1)" @onclick="() => qvQty--">&minus;</button>
+                        <span class="num w-10 text-center text-lg" aria-live="polite">@qvQty</span>
+                        <button type="button" class="icon-btn" aria-label="Increase quantity" disabled="@(qvQty >= Math.Min(qv.Stock, CartStore.MaxPerLine))" @onclick="() => qvQty++">+</button>
+                    </div>
+
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button type="button" class="btn" disabled="@(qv.Stock == 0)" @onclick="AddQuick">Add to cart &middot; @Money.Fmt(qv.Price * qvQty)</button>
+                        <button type="button" class="btn-ghost" @onclick="CloseQuick">Close</button>
+                    </div>
+                    @if (qv.Stock == 0)
+                    {
+                        <p class="mt-3 font-mono text-xs text-signal">Sold out for now. It returns after the next roast day.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string search = "";
+    private string sort = "featured";
+    private ProductCategory? category;
+    private RoastLevel? roast;
+
+    private Product? quick;
+    private GrindSize qvGrind = GrindSize.WholeBean;
+    private int qvQty = 1;
+    private bool focusModal, cartOpen;
+    private ElementReference modalEl;
+
+    private string? status, promoInput, promoMsg;
+    private bool promoOk;
+
+    private IEnumerable<Product> Filtered
+    {
+        get
+        {
+            var q = SampleData.Products.Where(p =>
+                (category is null || p.Category == category) &&
+                (roast is null || p.Roast == roast) &&
+                (string.IsNullOrWhiteSpace(search)
+                    || p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || p.Origin.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || p.Notes.Contains(search, StringComparison.OrdinalIgnoreCase)));
+
+            return sort switch
+            {
+                "price-asc" => q.OrderBy(p => p.Price),
+                "price-desc" => q.OrderByDescending(p => p.Price),
+                "name" => q.OrderBy(p => p.Name),
+                _ => q
+            };
+        }
+    }
+
+    protected override void OnInitialized() => CartStore.Changed += OnCart;
+    private void OnCart() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => CartStore.Changed -= OnCart;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusModal && quick is not null)
+        {
+            focusModal = false;
+            await modalEl.FocusAsync();
+        }
+    }
+
+    private void SetCategory(ProductCategory? c)
+    {
+        category = c;
+        if (c != ProductCategory.Beans) roast = null;
+    }
+
+    private void ClearFilters()
+    {
+        search = ""; category = null; roast = null; sort = "featured";
+    }
+
+    private void Add(Product p, GrindSize? grind = null, int qty = 1)
+    {
+        GrindSize? g = grind;
+        if (g is null && p.HasGrind) g = GrindSize.WholeBean;
+
+        var ok = CartStore.Add(p, g, qty);
+        status = ok
+            ? $"Added {p.Name} to your cart."
+            : $"That's the most of {p.Name} we can ship ({Math.Min(p.Stock, CartStore.MaxPerLine)}).";
+    }
+
+    private void OpenQuick(Product p)
+    {
+        quick = p; qvGrind = GrindSize.WholeBean; qvQty = 1; focusModal = true;
+    }
+
+    private void CloseQuick() => quick = null;
+
+    private void OnModalKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") quick = null;
+    }
+
+    private void AddQuick()
+    {
+        if (quick is null) return;
+        Add(quick, quick.HasGrind ? qvGrind : null, qvQty);
+        quick = null;
+    }
+
+    private void ApplyPromo()
+    {
+        promoOk = CartStore.TryApplyPromo(promoInput);
+        promoMsg = promoOk ? "FIRSTPOUR applied: 10% off." : "That code isn't valid. Try FIRSTPOUR.";
+    }
+}

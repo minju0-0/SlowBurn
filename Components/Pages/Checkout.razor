@@ -1,0 +1,221 @@
+@page "/checkout"
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Checkout | Slow Burn Roasters</PageTitle>
+
+<section class="mx-auto max-w-6xl px-5 pt-10">
+    <p class="eyebrow">Last step</p>
+    <h1 class="mt-2 text-4xl font-bold sm:text-5xl">Checkout</h1>
+</section>
+
+@if (receipt is not null)
+{
+    <section class="mx-auto mt-8 max-w-2xl px-5" role="status">
+        <div class="panel bg-kraft p-6 shadow-block sm:p-8">
+            <span class="stamp">Order placed</span>
+            <h2 class="mt-5 text-3xl font-bold">Thanks, your beans are queued for roasting.</h2>
+            <p class="mt-2 text-muted">A receipt is on its way to <strong class="text-ink">@receipt.Email</strong>.</p>
+            <dl class="mt-6 divide-y-2 divide-dashed divide-ink/30 border-y-2 border-ink">
+                <div class="flex justify-between py-2"><dt>Reference</dt><dd class="num font-bold">@receipt.Reference</dd></div>
+                <div class="flex justify-between py-2"><dt>Items</dt><dd class="num">@receipt.ItemCount</dd></div>
+                <div class="flex justify-between py-2"><dt>Delivery</dt><dd>@Labels.Delivery(receipt.Delivery), @Labels.Eta(receipt.Delivery)</dd></div>
+                <div class="flex justify-between py-2 text-lg font-bold"><dt>Total</dt><dd class="num">@Money.Fmt(receipt.Total)</dd></div>
+            </dl>
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a href="/shop" class="btn">Keep shopping</a>
+                <a href="/brew" class="btn-ghost">Plan your first brew</a>
+            </div>
+        </div>
+    </section>
+}
+else if (CartStore.Items.Count == 0)
+{
+    <section class="mx-auto mt-8 max-w-2xl px-5">
+        <div class="panel border-dashed p-10 text-center">
+            <p class="font-display text-3xl font-bold">Your cart is empty.</p>
+            <p class="mx-auto mt-2 max-w-sm text-muted">Pick a bag or two first. This page fills in with your order as soon as there is something to check out.</p>
+            <a href="/shop" class="btn mt-6">Browse the shop</a>
+        </div>
+    </section>
+}
+else
+{
+    var lines = CartStore.Items;
+    <div class="mx-auto mt-8 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_24rem] lg:items-start">
+        <EditForm EditContext="ctx" OnValidSubmit="Submit" OnInvalidSubmit="OnInvalid" novalidate class="space-y-10">
+            <DataAnnotationsValidator />
+
+            @if (showErrors && errorCount > 0)
+            {
+                <div class="border-2 border-signal bg-kraft p-3 font-mono text-xs" role="alert">
+                    Fix @errorCount @(errorCount == 1 ? "field" : "fields") below, then place the order.
+                </div>
+            }
+
+            <fieldset class="space-y-4">
+                <legend class="mb-2 w-full border-b-2 border-ink pb-2 font-display text-2xl font-bold"><span class="num mr-2 text-roast">01</span>Who is it for?</legend>
+                <div>
+                    <label for="name" class="field-label">Full name</label>
+                    <InputText id="name" class="field" autocomplete="name" @bind-Value="form.FullName" />
+                    <ValidationMessage For="() => form.FullName" />
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="email" class="field-label">Email</label>
+                        <InputText id="email" type="email" class="field" autocomplete="email" @bind-Value="form.Email" />
+                        <ValidationMessage For="() => form.Email" />
+                    </div>
+                    <div>
+                        <label for="phone" class="field-label">Phone</label>
+                        <InputText id="phone" type="tel" class="field" autocomplete="tel" @bind-Value="form.Phone" />
+                        <ValidationMessage For="() => form.Phone" />
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="space-y-4">
+                <legend class="mb-2 w-full border-b-2 border-ink pb-2 font-display text-2xl font-bold"><span class="num mr-2 text-roast">02</span>How should it reach you?</legend>
+                <InputRadioGroup @bind-Value="form.Delivery" Name="delivery">
+                    <div class="grid gap-3">
+                        @foreach (var d in Enum.GetValues<DeliveryMethod>())
+                        {
+                            var cost = CartStore.Shipping(d);
+                            <label class="flex min-h-11 cursor-pointer items-start gap-3 border-2 border-ink p-3 transition-colors hover:bg-kraft has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-signal">
+                                <InputRadio Value="d" class="sr-only" />
+                                <span>
+                                    <span class="block font-bold">@Labels.Delivery(d)</span>
+                                    <span class="block text-sm opacity-80">@Labels.DeliveryNote(d)</span>
+                                </span>
+                                <span class="num ml-auto font-bold">@(cost == 0 ? "Free" : Money.Fmt(cost))</span>
+                            </label>
+                        }
+                    </div>
+                </InputRadioGroup>
+
+                @if (form.Delivery != DeliveryMethod.Pickup)
+                {
+                    <div>
+                        <label for="addr" class="field-label">Street address</label>
+                        <InputText id="addr" class="field" autocomplete="street-address" @bind-Value="form.Address" />
+                        <ValidationMessage For="() => form.Address" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="city" class="field-label">City</label>
+                            <InputText id="city" class="field" autocomplete="address-level2" @bind-Value="form.City" />
+                            <ValidationMessage For="() => form.City" />
+                        </div>
+                        <div>
+                            <label for="zip" class="field-label">Postal code</label>
+                            <InputText id="zip" class="field" inputmode="numeric" autocomplete="postal-code" @bind-Value="form.PostalCode" />
+                            <ValidationMessage For="() => form.PostalCode" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="border-2 border-dashed border-ink/50 p-3 text-sm text-muted">No address needed. We'll email you when the bag is ready at the counter.</p>
+                }
+            </fieldset>
+
+            <fieldset class="space-y-4">
+                <legend class="mb-2 w-full border-b-2 border-ink pb-2 font-display text-2xl font-bold"><span class="num mr-2 text-roast">03</span>Anything else?</legend>
+                <div>
+                    <label for="note" class="field-label">Note to the roaster (optional)</label>
+                    <InputTextArea id="note" rows="3" class="field" @bind-Value="form.Note" />
+                    <ValidationMessage For="() => form.Note" />
+                </div>
+                <div>
+                    <label class="flex min-h-11 items-start gap-3 text-sm">
+                        <InputCheckbox class="mt-0.5 size-5 shrink-0 accent-roast" @bind-Value="form.AcceptTerms" />
+                        <span>I understand my coffee is roasted to order, so the order can't be cancelled once roasting starts.</span>
+                    </label>
+                    <ValidationMessage For="() => form.AcceptTerms" />
+                </div>
+            </fieldset>
+
+            <button type="submit" class="btn w-full sm:w-auto" disabled="@sending">
+                @if (sending)
+                {
+                    <span class="size-4 animate-spin border-2 border-paper border-t-transparent" aria-hidden="true"></span>
+                }
+                @(sending ? "Placing order..." : $"Place order · {Money.Fmt(Total)}")
+            </button>
+        </EditForm>
+
+        <aside class="panel bg-kraft p-5 lg:sticky lg:top-4" aria-label="Order summary">
+            <h2 class="text-2xl font-bold">Your order</h2>
+            <ul class="mt-4 divide-y-2 divide-dashed divide-ink/30">
+                @foreach (var line in lines)
+                {
+                    <li class="flex gap-3 py-3">
+                        <div class="halftone h-fit border-2 border-ink bg-paper p-1"><ProductArt Product="line.Product" Class="h-12" /></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold leading-tight">@line.Product.Name</p>
+                            <p class="font-mono text-[11px] uppercase tracking-wider text-muted">
+                                @line.Quantity x @Money.Fmt(line.Product.Price)@(line.Grind is not null ? " · " + Labels.Grind(line.Grind.Value) : "")
+                            </p>
+                        </div>
+                        <p class="num font-bold">@Money.Fmt(line.LineTotal)</p>
+                    </li>
+                }
+            </ul>
+            <dl class="mt-3 space-y-1 border-t-2 border-ink pt-3 text-sm">
+                <div class="flex justify-between"><dt>Subtotal</dt><dd class="num">@Money.Fmt(CartStore.Subtotal)</dd></div>
+                @if (CartStore.Discount > 0)
+                {
+                    <div class="flex justify-between text-ok"><dt>Promo @CartStore.Promo</dt><dd class="num">&minus;@Money.Fmt(CartStore.Discount)</dd></div>
+                }
+                <div class="flex justify-between"><dt>Shipping</dt><dd class="num">@(Shipping == 0 ? "Free" : Money.Fmt(Shipping))</dd></div>
+                <div class="flex justify-between border-t-2 border-ink pt-2 text-xl font-bold"><dt>Total</dt><dd class="num">@Money.Fmt(Total)</dd></div>
+            </dl>
+            <a href="/shop" class="link-btn mt-3">&larr; Edit cart</a>
+        </aside>
+    </div>
+}
+
+@code {
+    private CheckoutForm form = new();
+    private EditContext ctx = default!;
+    private OrderReceipt? receipt;
+    private bool sending, showErrors;
+    private int errorCount;
+
+    private decimal Shipping => CartStore.Shipping(form.Delivery);
+    private decimal Total => CartStore.Net + Shipping;
+
+    protected override void OnInitialized()
+    {
+        ctx = new EditContext(form);
+        CartStore.Changed += Refresh;
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => CartStore.Changed -= Refresh;
+
+    private void OnInvalid()
+    {
+        showErrors = true;
+        errorCount = ctx.GetValidationMessages().Count();
+    }
+
+    private async Task Submit()
+    {
+        if (sending) return;
+        sending = true;
+        showErrors = false;
+        await Task.Delay(1200);   // simulate sending the order
+
+        receipt = new OrderReceipt
+        {
+            Reference = $"SB-{Random.Shared.Next(10000, 99999)}",
+            Email = form.Email,
+            ItemCount = CartStore.Count,
+            Total = Total,
+            Delivery = form.Delivery
+        };
+        CartStore.Clear();
+        sending = false;
+    }
+}

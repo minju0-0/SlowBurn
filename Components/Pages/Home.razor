@@ -1,0 +1,117 @@
+@page "/"
+
+<PageTitle>Slow Burn Roasters | Small-lot coffee, roasted Mondays</PageTitle>
+
+<section class="mx-auto grid max-w-6xl gap-12 px-5 pb-16 pt-10 lg:grid-cols-12 lg:gap-8 lg:pt-16">
+    <div class="lg:col-span-7">
+        <p class="eyebrow">Batch @batch &middot; Roasted @roasted.ToString("ddd d MMM")</p>
+        <h1 class="mt-4 text-5xl font-bold leading-[0.95] sm:text-6xl lg:text-7xl">Roasted Monday.<br />On your counter by Friday.</h1>
+        <p class="mt-6 max-w-lg text-lg text-muted">
+            Five kilos at a time, one origin per bag. Every label prints the farm, the altitude and the day the beans left the drum, so you always know how old your coffee is.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+            <a href="/shop" class="btn">Shop this week's lots</a>
+            <a href="/brew" class="btn-ghost">Dial in a brew</a>
+        </div>
+    </div>
+
+    <div class="relative lg:col-span-5">
+        <div class="panel halftone flex items-center justify-center bg-kraft p-0 overflow-hidden shadow-block">
+            <ProductArt Product="hero" Class="w-full h-80 sm:h-96 object-cover" />
+        </div>
+        <span class="stamp absolute -top-4 right-2 bg-paper">Roasted @roasted.ToString("d MMM")</span>
+        <p class="mt-4 font-mono text-xs uppercase tracking-widest text-muted">
+            On the label: @hero.Sku &middot; @hero.Name &middot; @hero.Origin
+        </p>
+    </div>
+</section>
+
+<section class="reveal mx-auto max-w-6xl px-5" aria-labelledby="lots-h">
+    <div class="flex items-end justify-between border-b-2 border-ink pb-3">
+        <h2 id="lots-h" class="text-3xl font-bold">This week's lots</h2>
+        <a href="/shop" class="link-btn">All products</a>
+    </div>
+    <ul>
+        @foreach (var p in lots)
+        {
+            <li class="border-b border-ink/30">
+                <a href="/shop" class="group -mx-3 grid gap-1 px-3 py-4 transition-colors hover:bg-kraft md:grid-cols-[5rem_1.2fr_2fr_7rem_5rem] md:items-center md:gap-4">
+                    <span class="num text-sm text-muted">@p.Sku</span>
+                    <span>
+                        <span class="block font-display text-xl font-bold leading-tight group-hover:underline">@p.Name</span>
+                        <span class="block font-mono text-[11px] uppercase tracking-wider text-muted">@p.Origin</span>
+                    </span>
+                    <span class="text-sm italic">@p.Notes</span>
+                    <span class="flex items-center gap-1">
+                        <span class="flex gap-1" aria-hidden="true">
+                            @for (var i = 1; i <= 3; i++)
+                            {
+                                <span class="@(i <= (int)p.Roast ? "bg-ink" : "") inline-block size-2.5 border border-ink"></span>
+                            }
+                        </span>
+                        <span class="ml-1 font-mono text-[11px] uppercase tracking-wider">@p.Roast</span>
+                    </span>
+                    <span class="num font-bold md:text-right">@Money.Fmt(p.Price)</span>
+                </a>
+            </li>
+        }
+    </ul>
+</section>
+
+<section class="reveal mx-auto mt-20 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_2fr]" aria-labelledby="label-h">
+    <h2 id="label-h" class="text-3xl font-bold lg:sticky lg:top-8 lg:self-start">What the label tells you</h2>
+    <ol class="divide-y-2 divide-dashed divide-ink/40 border-y-2 border-ink">
+        <li class="grid gap-2 py-6 sm:grid-cols-[4rem_1fr]">
+            <span class="num text-4xl font-bold text-roast">01</span>
+            <div>
+                <h3 class="text-xl font-bold">A roast date, not a best-before</h3>
+                <p class="mt-1 text-muted">We print the day the beans left the drum. Most coffee peaks between day five and day twenty-one, and now you can count.</p>
+            </div>
+        </li>
+        <li class="grid gap-2 py-6 sm:grid-cols-[4rem_1fr]">
+            <span class="num text-4xl font-bold text-roast">02</span>
+            <div>
+                <h3 class="text-xl font-bold">One origin per bag</h3>
+                <p class="mt-1 text-muted">No house blend hiding a weak lot. When a harvest runs out we say so and move on to the next one.</p>
+            </div>
+        </li>
+        <li class="grid gap-2 py-6 sm:grid-cols-[4rem_1fr]">
+            <span class="num text-4xl font-bold text-roast">03</span>
+            <div>
+                <h3 class="text-xl font-bold">Packed within a day of roasting</h3>
+                <p class="mt-1 text-muted">Orders in by Monday night ship Tuesday. We would rather you wait a day than drink stale coffee.</p>
+            </div>
+        </li>
+    </ol>
+</section>
+
+<section class="reveal mx-auto mt-20 max-w-6xl px-5" aria-labelledby="starter-h">
+    <div class="grid border-2 border-ink bg-kraft md:grid-cols-[1fr_2fr] overflow-hidden">
+        <div class="halftone flex items-center justify-center border-b-2 border-ink p-0 overflow-hidden md:border-b-0 md:border-r-2" style="min-height: 14rem;">
+            <ProductArt Product="starter" Class="w-full h-full object-cover" />
+        </div>
+        <div class="p-6 sm:p-8">
+            <p class="eyebrow">New to pour-over?</p>
+            <h2 id="starter-h" class="mt-2 text-3xl font-bold">@starter.Name</h2>
+            <p class="mt-3 max-w-xl text-muted">@starter.Description</p>
+            <div class="mt-6 flex flex-wrap items-center gap-4">
+                <span class="num text-2xl font-bold">@Money.Fmt(starter.Price)</span>
+                <a href="/shop" class="btn">See the bundle</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private readonly Product hero = SampleData.Products[0];
+    private readonly Product starter = SampleData.Products.First(p => p.Category == ProductCategory.Bundles);
+    private readonly List<Product> lots = SampleData.Products.Where(p => p.Category == ProductCategory.Beans).ToList();
+    private readonly DateTime roasted = LastMonday();
+    private readonly int batch = ISOWeek.GetWeekOfYear(DateTime.Today);
+
+    private static DateTime LastMonday()
+    {
+        var d = DateTime.Today;
+        return d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+    }
+}

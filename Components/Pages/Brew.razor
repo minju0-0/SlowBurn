@@ -1,0 +1,179 @@
+@page "/brew"
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Brew guide | Slow Burn Roasters</PageTitle>
+
+<section class="mx-auto max-w-6xl px-5 pt-10">
+    <p class="eyebrow">Brew guide</p>
+    <h1 class="mt-2 text-4xl font-bold sm:text-5xl">Dial in a brew</h1>
+    <p class="mt-3 max-w-xl text-muted">Pick a method and how much you're making. We do the maths, you do the pouring.</p>
+</section>
+
+<div class="mx-auto mt-8 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_1.1fr]">
+    <div class="space-y-6">
+        <div>
+            <p class="field-label">Method</p>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="Brew method">
+                @foreach (var m in SampleData.BrewMethods)
+                {
+                    <button type="button" class="chip" aria-pressed="@Labels.On(m == method)" @onclick="() => SelectMethod(m)">@m.Name</button>
+                }
+            </div>
+            <p class="mt-2 text-sm italic text-muted">@method.Tagline</p>
+        </div>
+
+        <div>
+            <p class="field-label">How many @(method.Unit)s</p>
+            <div class="flex items-center gap-1">
+                <button type="button" class="icon-btn" aria-label="Fewer" disabled="@(servings <= 1)" @onclick="() => servings--">&minus;</button>
+                <span class="num w-12 text-center text-2xl font-bold" aria-live="polite">@servings</span>
+                <button type="button" class="icon-btn" aria-label="More" disabled="@(servings >= method.MaxServings)" @onclick="() => servings++">+</button>
+                <span class="ml-3 font-mono text-xs uppercase tracking-wider text-muted">@method.MlPerServing ml each</span>
+            </div>
+        </div>
+
+        <div>
+            <p class="field-label">Strength</p>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="Strength">
+                @foreach (var s in Enum.GetValues<BrewStrength>())
+                {
+                    <button type="button" class="chip" aria-pressed="@Labels.On(strength == s)" @onclick="() => strength = s">@s</button>
+                }
+            </div>
+        </div>
+
+        <div class="panel p-5" role="timer" aria-label="Brew timer">
+            <p class="field-label">Timer</p>
+            <p class="num text-6xl font-bold" aria-live="off">@Clock(remaining)</p>
+            <p class="mt-1 min-h-6 font-mono text-xs uppercase tracking-wider text-muted" aria-live="polite">
+                @(running ? "Brewing..." : remaining == 0 ? "Done. Pull the brew and taste." : remaining == method.Seconds ? "Ready when you are." : "Paused.")
+            </p>
+            <div class="mt-4 flex gap-2">
+                <button type="button" class="btn" @onclick="ToggleTimer">@(running ? "Pause" : remaining == 0 ? "Restart" : "Start")</button>
+                <button type="button" class="btn-ghost" @onclick="ResetTimer">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="border-2 border-ink bg-ink p-6 text-paper" aria-live="polite">
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-kraft">@method.Name &middot; ratio 1:@Ratio.ToString("0.#", CultureInfo.InvariantCulture)</p>
+            <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-6">
+                <div>
+                    <dt class="font-mono text-[11px] uppercase tracking-widest text-kraft">Coffee</dt>
+                    <dd class="num text-5xl font-bold">@CoffeeG.ToString("0.0", CultureInfo.InvariantCulture)<span class="text-xl"> g</span></dd>
+                </div>
+                <div>
+                    <dt class="font-mono text-[11px] uppercase tracking-widest text-kraft">Water</dt>
+                    <dd class="num text-5xl font-bold">@WaterMl<span class="text-xl"> ml</span></dd>
+                </div>
+                <div>
+                    <dt class="font-mono text-[11px] uppercase tracking-widest text-kraft">Temperature</dt>
+                    <dd class="num text-3xl font-bold">@method.TempC<span class="text-lg"> &deg;C</span></dd>
+                </div>
+                <div>
+                    <dt class="font-mono text-[11px] uppercase tracking-widest text-kraft">Grind</dt>
+                    <dd class="text-xl font-bold leading-tight">@Labels.Grind(method.Grind)</dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="mt-6">
+            <div class="flex items-end justify-between border-b-2 border-ink pb-2">
+                <h2 class="text-2xl font-bold">Steps</h2>
+                <span class="font-mono text-xs uppercase tracking-wider text-muted">@done.Count of @method.Steps.Count done</span>
+            </div>
+            <div class="mt-3 h-3 border-2 border-ink" role="progressbar" aria-label="Brew steps completed" aria-valuemin="0" aria-valuemax="@method.Steps.Count" aria-valuenow="@done.Count">
+                <div class="h-full bg-ok transition-all duration-300" style="width:@(StepPct)%"></div>
+            </div>
+            <ol class="mt-2">
+                @for (var i = 0; i < method.Steps.Count; i++)
+                {
+                    var idx = i;
+                    var isDone = done.Contains(idx);
+                    <li class="border-b border-ink/30">
+                        <button type="button" class="flex min-h-11 w-full cursor-pointer items-start gap-4 px-1 py-4 text-left transition-colors hover:bg-kraft"
+                                aria-pressed="@Labels.On(isDone)" @onclick="() => ToggleStep(idx)">
+                            <span class="num grid size-8 shrink-0 place-items-center border-2 border-ink font-bold @(isDone ? "bg-ink text-paper" : "")">@(isDone ? "✓" : (idx + 1).ToString())</span>
+                            <span class="@(isDone ? "text-muted line-through" : "")">@method.Steps[idx]</span>
+                        </button>
+                    </li>
+                }
+            </ol>
+            @if (done.Count == method.Steps.Count)
+            {
+                <p class="mt-3 border-l-4 border-ok bg-kraft px-3 py-2 text-sm" role="status">All steps done. Taste it, then change one thing next time: grind or ratio.</p>
+            }
+        </div>
+
+        <div class="panel mt-8 flex flex-wrap items-center justify-between gap-3 bg-kraft p-4">
+            <p class="max-w-xs text-sm">Need beans for a @method.Name.ToLowerInvariant()? Start with a @(method.Grind == GrindSize.Espresso ? "medium roast" : "light roast").</p>
+            <a href="/shop" class="btn">Shop beans</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private BrewMethod method = SampleData.BrewMethods[0];
+    private int servings = 2;
+    private BrewStrength strength = BrewStrength.Standard;
+    private readonly HashSet<int> done = new();
+
+    private System.Threading.Timer? timer;
+    private int remaining;
+    private bool running;
+
+    // Bold strength means more coffee per water, so a smaller ratio.
+    private double Ratio => method.Ratio * strength switch { BrewStrength.Mild => 1.12, BrewStrength.Bold => 0.88, _ => 1.0 };
+    private int WaterMl => servings * method.MlPerServing;
+    private double CoffeeG => WaterMl / Ratio;
+    private int StepPct => method.Steps.Count == 0 ? 0 : done.Count * 100 / method.Steps.Count;
+
+    protected override void OnInitialized() => remaining = method.Seconds;
+
+    private void SelectMethod(BrewMethod m)
+    {
+        method = m;
+        servings = Math.Min(servings, m.MaxServings);
+        done.Clear();
+        ResetTimer();
+    }
+
+    private void ToggleStep(int i)
+    {
+        if (!done.Remove(i)) done.Add(i);
+    }
+
+    private static string Clock(int s) => $"{s / 60}:{s % 60:00}";
+
+    private void ToggleTimer()
+    {
+        if (running) { StopTimer(); return; }
+        if (remaining <= 0) remaining = method.Seconds;
+        running = true;
+        timer = new System.Threading.Timer(state => { _ = InvokeAsync(Tick); }, null, 1000, 1000);
+    }
+
+    private void Tick()
+    {
+        remaining--;
+        if (remaining <= 0) { remaining = 0; StopTimer(); }
+        StateHasChanged();
+    }
+
+    private void StopTimer()
+    {
+        running = false;
+        timer?.Dispose();
+        timer = null;
+    }
+
+    private void ResetTimer()
+    {
+        StopTimer();
+        remaining = method.Seconds;
+    }
+
+    public void Dispose() => timer?.Dispose();
+}
