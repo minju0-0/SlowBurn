@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@source "../Components/**/*.razor";
+
+/* Art direction: mail-order roastery catalogue. Kraft paper, ink, hard 2px rules, mono specs, serif headlines. */
+@theme {
+    --color-paper: #f2ead8;
+    --color-kraft: #e4d5b4;
+    --color-ink: #1d1712;
+    --color-muted: #5a4f43;
+    --color-roast: #7b2d12;
+    --color-signal: #b0321a;
+    --color-ok: #2f5d3a;
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+    --shadow-block: 5px 5px 0 0 var(--color-ink);
+    --shadow-block-sm: 3px 3px 0 0 var(--color-ink);
+}
+
+@layer base {
+    html { scroll-behavior: smooth; }
+    body { @apply bg-paper text-ink font-sans antialiased; }
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+    ::selection { background: var(--color-ink); color: var(--color-paper); }
+    :focus-visible { outline: 3px solid var(--color-signal); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+}
+
+@layer components {
+    /* Buttons (note: Tailwind v4 can't @apply custom classes, so each variant lists its own utilities) */
+    .btn {
+        @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 border-2 border-ink bg-ink px-5 py-2
+               font-mono text-xs font-semibold uppercase tracking-widest text-paper transition duration-150
+               hover:-translate-y-0.5 hover:bg-roast hover:shadow-block-sm disabled:pointer-events-none disabled:opacity-40;
+    }
+    .btn-ghost {
+        @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 border-2 border-ink bg-transparent px-5 py-2
+               font-mono text-xs font-semibold uppercase tracking-widest text-ink transition duration-150
+               hover:bg-ink hover:text-paper disabled:pointer-events-none disabled:opacity-40;
+    }
+    .icon-btn {
+        @apply inline-flex size-11 cursor-pointer items-center justify-center border-2 border-ink font-mono text-lg
+               transition-colors hover:bg-ink hover:text-paper disabled:pointer-events-none disabled:opacity-40;
+    }
+    .link-btn {
+        @apply inline-flex min-h-11 cursor-pointer items-center font-mono text-[11px] uppercase tracking-wider
+               underline underline-offset-4 hover:text-roast;
+    }
+    .chip {
+        @apply inline-flex min-h-11 cursor-pointer items-center border-2 border-ink px-4 font-mono text-xs uppercase
+               tracking-wider transition-colors hover:bg-kraft;
+    }
+    .chip[aria-pressed="true"] { background-color: var(--color-ink); color: var(--color-paper); }
+
+    /* Forms */
+    .field-label { @apply mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest; }
+    .field { @apply block min-h-11 w-full border-2 border-ink bg-paper px-3 py-2 text-base placeholder:text-muted; }
+    .field.invalid { border-color: var(--color-signal); background-color: #f8e3d9; }
+    .field.valid.modified { border-color: var(--color-ok); }
+    .validation-message { @apply mt-1 block font-mono text-xs text-signal; }
+
+    /* Surfaces */
+    .panel { @apply border-2 border-ink bg-paper; }
+    .panel-lift { @apply transition duration-150 hover:-translate-y-1 hover:shadow-block; }
+    .halftone { background-image: radial-gradient(rgba(29, 23, 18, 0.16) 1px, transparent 1.2px); background-size: 7px 7px; }
+
+    /* Labels */
+    .tag { @apply inline-block border border-ink px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider; }
+    .tag-solid { @apply inline-block border border-ink bg-ink px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider text-paper; }
+    .tag-signal { @apply inline-block border border-signal bg-signal px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider text-paper; }
+    .eyebrow { @apply font-mono text-xs uppercase tracking-[0.2em] text-muted; }
+    .num { @apply font-mono tabular-nums; }
+    .stamp { @apply inline-block -rotate-6 border-4 border-double border-signal px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest text-signal; }
+
+    /* Navigation */
+    .nav-link { @apply inline-flex min-h-11 items-center px-3 font-mono text-xs uppercase tracking-widest transition-colors hover:bg-kraft; }
+    .nav-link.is-active { background-color: var(--color-ink); color: var(--color-paper); }
+}
+
+/* Scroll reveal (driven by wwwroot/js/site.js; content stays visible if JS fails) */
+.reveal-init { opacity: 0; transform: translateY(14px); }
+.reveal { transition: opacity 0.5s ease, transform 0.5s ease; }
+.in-view { opacity: 1; transform: none; }
