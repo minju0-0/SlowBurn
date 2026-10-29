@@ -1,4 +1,5 @@
 @rendermode InteractiveServer
+@inject ICartService Cart
 @implements IDisposable
 
 <header class="relative border-b-2 border-ink bg-paper">
@@ -16,6 +17,7 @@
             <li><NavLink href="/" Match="NavLinkMatch.All" class="nav-link" ActiveClass="is-active" @onclick="Close">Home</NavLink></li>
             <li><NavLink href="/shop" class="nav-link" ActiveClass="is-active" @onclick="Close">Shop</NavLink></li>
             <li><NavLink href="/brew" class="nav-link" ActiveClass="is-active" @onclick="Close">Brew guide</NavLink></li>
+            <li><NavLink href="/contact" class="nav-link" ActiveClass="is-active" @onclick="Close">Contact</NavLink></li>
         </ul>
 
         <a href="/checkout" class="btn-ghost" aria-label="Cart, @count items">Cart <span class="num">(@count)</span></a>
@@ -29,12 +31,12 @@
 
 @code {
     private bool open;
-    private int count => CartStore.Count;
+    private int count => Cart.Count;
 
     private void Toggle() => open = !open;
     private void Close() => open = false;
 
-    protected override void OnInitialized() => CartStore.Changed += Refresh;
+    protected override void OnInitialized() => Cart.Changed += Refresh;
     private void Refresh() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() => CartStore.Changed -= Refresh;
+    public void Dispose() => Cart.Changed -= Refresh;
 }
