@@ -1,5 +1,7 @@
 @page "/checkout"
 @rendermode InteractiveServer
+@inject ICartService Cart
+@inject IOrderService OrderService
 @implements IDisposable
 
 <PageTitle>Checkout | Slow Burn Roasters</PageTitle>
@@ -29,7 +31,7 @@
         </div>
     </section>
 }
-else if (CartStore.Items.Count == 0)
+else if (Cart.Items.Count == 0)
 {
     <section class="mx-auto mt-8 max-w-2xl px-5">
         <div class="panel border-dashed p-10 text-center">
@@ -41,7 +43,7 @@ else if (CartStore.Items.Count == 0)
 }
 else
 {
-    var lines = CartStore.Items;
+    var lines = Cart.Items;
     <div class="mx-auto mt-8 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_24rem] lg:items-start">
         <EditForm EditContext="ctx" OnValidSubmit="Submit" OnInvalidSubmit="OnInvalid" novalidate class="space-y-10">
             <DataAnnotationsValidator />
@@ -80,7 +82,7 @@ else
                     <div class="grid gap-3">
                         @foreach (var d in Enum.GetValues<DeliveryMethod>())
                         {
-                            var cost = CartStore.Shipping(d);
+                            var cost = Cart.Shipping(d);
                             <label class="flex min-h-11 cursor-pointer items-start gap-3 border-2 border-ink p-3 transition-colors hover:bg-kraft has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-signal">
                                 <InputRadio Value="d" class="sr-only" />
                                 <span>
@@ -162,10 +164,10 @@ else
                 }
             </ul>
             <dl class="mt-3 space-y-1 border-t-2 border-ink pt-3 text-sm">
-                <div class="flex justify-between"><dt>Subtotal</dt><dd class="num">@Money.Fmt(CartStore.Subtotal)</dd></div>
-                @if (CartStore.Discount > 0)
+                <div class="flex justify-between"><dt>Subtotal</dt><dd class="num">@Money.Fmt(Cart.Subtotal)</dd></div>
+                @if (Cart.Discount > 0)
                 {
-                    <div class="flex justify-between text-ok"><dt>Promo @CartStore.Promo</dt><dd class="num">&minus;@Money.Fmt(CartStore.Discount)</dd></div>
+                    <div class="flex justify-between text-ok"><dt>Promo @Cart.Promo</dt><dd class="num">&minus;@Money.Fmt(Cart.Discount)</dd></div>
                 }
                 <div class="flex justify-between"><dt>Shipping</dt><dd class="num">@(Shipping == 0 ? "Free" : Money.Fmt(Shipping))</dd></div>
                 <div class="flex justify-between border-t-2 border-ink pt-2 text-xl font-bold"><dt>Total</dt><dd class="num">@Money.Fmt(Total)</dd></div>
@@ -182,17 +184,17 @@ else
     private bool sending, showErrors;
     private int errorCount;
 
-    private decimal Shipping => CartStore.Shipping(form.Delivery);
-    private decimal Total => CartStore.Net + Shipping;
+    private decimal Shipping => Cart.Shipping(form.Delivery);
+    private decimal Total => Cart.Net + Shipping;
 
     protected override void OnInitialized()
     {
         ctx = new EditContext(form);
-        CartStore.Changed += Refresh;
+        Cart.Changed += Refresh;
     }
 
     private void Refresh() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() => CartStore.Changed -= Refresh;
+    public void Dispose() => Cart.Changed -= Refresh;
 
     private void OnInvalid()
     {
@@ -205,17 +207,13 @@ else
         if (sending) return;
         sending = true;
         showErrors = false;
-        await Task.Delay(1200);   // simulate sending the order
-
-        receipt = new OrderReceipt
+        try
         {
-            Reference = $"SB-{Random.Shared.Next(10000, 99999)}",
-            Email = form.Email,
-            ItemCount = CartStore.Count,
-            Total = Total,
-            Delivery = form.Delivery
-        };
-        CartStore.Clear();
-        sending = false;
+            receipt = await OrderService.PlaceOrderAsync(form, Cart);
+        }
+        finally
+        {
+            sending = false;
+        }
     }
 }

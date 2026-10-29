@@ -1,5 +1,7 @@
 @page "/brew"
 @rendermode InteractiveServer
+@inject IProductService Products
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Brew guide | Slow Burn Roasters</PageTitle>
@@ -15,7 +17,7 @@
         <div>
             <p class="field-label">Method</p>
             <div class="flex flex-wrap gap-2" role="group" aria-label="Brew method">
-                @foreach (var m in SampleData.BrewMethods)
+                @foreach (var m in brewMethods)
                 {
                     <button type="button" class="chip" aria-pressed="@Labels.On(m == method)" @onclick="() => SelectMethod(m)">@m.Name</button>
                 }
@@ -115,7 +117,8 @@
 </div>
 
 @code {
-    private BrewMethod method = SampleData.BrewMethods[0];
+    private IReadOnlyList<BrewMethod> brewMethods = Array.Empty<BrewMethod>();
+    private BrewMethod method = default!;
     private int servings = 2;
     private BrewStrength strength = BrewStrength.Standard;
     private readonly HashSet<int> done = new();
@@ -130,7 +133,12 @@
     private double CoffeeG => WaterMl / Ratio;
     private int StepPct => method.Steps.Count == 0 ? 0 : done.Count * 100 / method.Steps.Count;
 
-    protected override void OnInitialized() => remaining = method.Seconds;
+    protected override void OnInitialized()
+    {
+        brewMethods = Products.GetBrewMethods();
+        method = brewMethods.Count > 0 ? brewMethods[0] : new();
+        remaining = method.Seconds;
+    }
 
     private void SelectMethod(BrewMethod m)
     {
@@ -158,7 +166,12 @@
     private void Tick()
     {
         remaining--;
-        if (remaining <= 0) { remaining = 0; StopTimer(); }
+        if (remaining <= 0)
+        {
+            remaining = 0;
+            StopTimer();
+            _ = JS.InvokeVoidAsync("playTimerChime");
+        }
         StateHasChanged();
     }
 
