@@ -104,17 +104,18 @@
 </section>
 
 @code {
-    private Product hero = default!;
-    private Product starter = default!;
+    private Product hero = new();
+    private Product starter = new();
     private IReadOnlyList<Product> lots = Array.Empty<Product>();
     private readonly DateTime roasted = LastMonday();
     private readonly int batch = ISOWeek.GetWeekOfYear(DateTime.Today);
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        hero = Products.GetHero();
-        starter = Products.GetStarterBundle();
-        lots = Products.GetBeanLots();
+        var home = await Products.GetHomeAsync();
+        hero = home.Hero;
+        starter = home.Starter;
+        lots = home.Lots;
     }
 
     private static DateTime LastMonday()
