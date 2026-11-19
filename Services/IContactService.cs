@@ -9,3 +9,4 @@ public interface IContactService
 {
     Task SendAsync(ContactForm form);
 }
+

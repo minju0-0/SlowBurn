@@ -1,5 +1,6 @@
 @page "/contact"
 @rendermode InteractiveServer
+@inject IContactService ContactService
 
 <PageTitle>Contact | Slow Burn Roasters</PageTitle>
 
@@ -68,6 +69,13 @@
                 <h2 class="font-display text-2xl font-bold">Send a message</h2>
                 <p class="mt-1 text-sm text-muted">We reply within 24 hours on roasting days.</p>
 
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="mt-4 border-2 border-signal bg-kraft p-3 font-mono text-xs text-signal" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
                 <EditForm Model="form" OnValidSubmit="HandleSubmit" class="mt-6 space-y-5" novalidate>
                     <DataAnnotationsValidator />
 
@@ -106,6 +114,7 @@
     private ContactForm form = new();
     private bool submitting;
     private bool sent;
+    private string? errorMessage;
     private string lastSubmittedName = "";
     private string lastSubmittedEmail = "";
 
@@ -113,18 +122,30 @@
     {
         if (submitting) return;
         submitting = true;
-        await Task.Delay(800); // Simulate network dispatch
+        errorMessage = null;
 
-        lastSubmittedName = form.Name;
-        lastSubmittedEmail = form.Email;
-        sent = true;
-        submitting = false;
-        form = new ContactForm();
+        try
+        {
+            await ContactService.SendAsync(form);
+            lastSubmittedName = form.Name;
+            lastSubmittedEmail = form.Email;
+            sent = true;
+            form = new ContactForm();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to send message: {ex.Message}";
+        }
+        finally
+        {
+            submitting = false;
+        }
     }
 
     private void SendAnother()
     {
         sent = false;
+        errorMessage = null;
         form = new ContactForm();
     }
 }

@@ -7,9 +7,7 @@
 <PageTitle>Shop | Slow Burn Roasters</PageTitle>
 
 @{
-    var list = Products.GetFiltered(search, category, roast, sort).ToList();
     var lines = Cart.Items;
-    var totalCount = Products.GetAll().Count;
     var left = Cart.FreeShippingAt - Cart.Net;
     var pct = Math.Clamp((int)(Cart.Net / Cart.FreeShippingAt * 100), 0, 100);
 }
@@ -23,11 +21,11 @@
     <div class="grid gap-4 border-y-2 border-ink py-4 md:grid-cols-[2fr_1fr] md:items-end">
         <div>
             <label for="q" class="field-label">Search</label>
-            <input id="q" type="search" class="field" placeholder="Origin, name or tasting note" @bind="search" @bind:event="oninput" />
+            <input id="q" type="search" class="field" placeholder="Origin, name or tasting note" @bind="search" @bind:event="oninput" @bind:after="LoadAsync" />
         </div>
         <div>
             <label for="sort" class="field-label">Sort by</label>
-            <select id="sort" class="field" @bind="sort">
+            <select id="sort" class="field" @bind="sort" @bind:after="LoadAsync">
                 <option value="featured">Featured</option>
                 <option value="price-asc">Price, low to high</option>
                 <option value="price-desc">Price, high to low</option>
@@ -37,20 +35,20 @@
     </div>
 
     <div class="flex flex-wrap gap-2 pt-4" role="group" aria-label="Category">
-        <button type="button" class="chip" aria-pressed="@Labels.On(category is null)" @onclick="() => SetCategory(null)">All</button>
+        <button type="button" class="chip" aria-pressed="@Labels.On(category is null)" @onclick="() => SetCategoryAsync(null)">All</button>
         @foreach (var c in Enum.GetValues<ProductCategory>())
         {
-            <button type="button" class="chip" aria-pressed="@Labels.On(category == c)" @onclick="() => SetCategory(c)">@c</button>
+            <button type="button" class="chip" aria-pressed="@Labels.On(category == c)" @onclick="() => SetCategoryAsync(c)">@c</button>
         }
     </div>
 
     @if (category == ProductCategory.Beans)
     {
         <div class="flex flex-wrap gap-2 pt-3" role="group" aria-label="Roast level">
-            <button type="button" class="chip" aria-pressed="@Labels.On(roast is null)" @onclick="() => roast = null">Any roast</button>
+            <button type="button" class="chip" aria-pressed="@Labels.On(roast is null)" @onclick="() => SetRoastAsync(null)">Any roast</button>
             @foreach (var r in Enum.GetValues<RoastLevel>().Where(r => r != RoastLevel.None))
             {
-                <button type="button" class="chip" aria-pressed="@Labels.On(roast == r)" @onclick="() => roast = r">@r</button>
+                <button type="button" class="chip" aria-pressed="@Labels.On(roast == r)" @onclick="() => SetRoastAsync(r)">@r</button>
             }
         </div>
     }
@@ -59,6 +57,10 @@
 <div class="mx-auto mt-6 grid max-w-6xl gap-8 px-5 lg:grid-cols-[1fr_22rem] lg:items-start">
     <div>
         <p class="font-mono text-xs uppercase tracking-widest text-muted" aria-live="polite">Showing @list.Count of @totalCount</p>
+        @if (loadFailed)
+        {
+            <p class="mt-2 border-l-4 border-signal bg-kraft px-3 py-2 text-sm text-signal" role="alert">@loadError</p>
+        }
         @if (status is not null)
         {
             <p class="mt-2 border-l-4 border-ok bg-kraft px-3 py-2 text-sm" role="status">@status</p>
@@ -248,6 +250,12 @@
     private ProductCategory? category;
     private RoastLevel? roast;
 
+    private int loadVersion;
+    private List<Product> list = new();
+    private int totalCount;
+    private bool loadFailed;
+    private string? loadError;
+
     private Product? quick;
     private GrindSize qvGrind = GrindSize.WholeBean;
     private int qvQty = 1;
@@ -257,21 +265,45 @@
     private string? status, promoInput, promoMsg;
     private bool promoOk;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrWhiteSpace(QueryParam))
         {
             search = QueryParam;
         }
         Cart.Changed += OnCart;
+        await LoadAsync();
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (!string.IsNullOrWhiteSpace(QueryParam) && search != QueryParam)
         {
             search = QueryParam;
+            await LoadAsync();
         }
+    }
+
+    private async Task LoadAsync()
+    {
+        var currentVersion = ++loadVersion;
+        loadFailed = false;
+        try
+        {
+            var results = await Products.GetFilteredAsync(search, category, roast, sort);
+            var count = await Products.CountAsync();
+            if (currentVersion != loadVersion) return; // Stale request, ignore
+
+            list = results;
+            totalCount = count;
+        }
+        catch (Exception ex)
+        {
+            if (currentVersion != loadVersion) return;
+            loadFailed = true;
+            loadError = $"Unable to load products from database: {ex.Message}";
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OnCart() => _ = InvokeAsync(StateHasChanged);
@@ -286,15 +318,23 @@
         }
     }
 
-    private void SetCategory(ProductCategory? c)
+    private async Task SetCategoryAsync(ProductCategory? c)
     {
         category = c;
         if (c != ProductCategory.Beans) roast = null;
+        await LoadAsync();
     }
 
-    private void ClearFilters()
+    private async Task SetRoastAsync(RoastLevel? r)
+    {
+        roast = r;
+        await LoadAsync();
+    }
+
+    private async Task ClearFilters()
     {
         search = ""; category = null; roast = null; sort = "featured";
+        await LoadAsync();
     }
 
     private void Add(Product p, GrindSize? grind = null, int qty = 1)

@@ -118,7 +118,7 @@
 
 @code {
     private IReadOnlyList<BrewMethod> brewMethods = Array.Empty<BrewMethod>();
-    private BrewMethod method = default!;
+    private BrewMethod method = new();
     private int servings = 2;
     private BrewStrength strength = BrewStrength.Standard;
     private readonly HashSet<int> done = new();
@@ -130,14 +130,17 @@
     // Bold strength means more coffee per water, so a smaller ratio.
     private double Ratio => method.Ratio * strength switch { BrewStrength.Mild => 1.12, BrewStrength.Bold => 0.88, _ => 1.0 };
     private int WaterMl => servings * method.MlPerServing;
-    private double CoffeeG => WaterMl / Ratio;
+    private double CoffeeG => WaterMl / (Ratio == 0 ? 15 : Ratio);
     private int StepPct => method.Steps.Count == 0 ? 0 : done.Count * 100 / method.Steps.Count;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        brewMethods = Products.GetBrewMethods();
-        method = brewMethods.Count > 0 ? brewMethods[0] : new();
-        remaining = method.Seconds;
+        brewMethods = await Products.GetBrewMethodsAsync();
+        if (brewMethods.Count > 0)
+        {
+            method = brewMethods[0];
+            remaining = method.Seconds;
+        }
     }
 
     private void SelectMethod(BrewMethod m)

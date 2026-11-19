@@ -48,6 +48,13 @@ else
         <EditForm EditContext="ctx" OnValidSubmit="Submit" OnInvalidSubmit="OnInvalid" novalidate class="space-y-10">
             <DataAnnotationsValidator />
 
+            @if (!string.IsNullOrEmpty(orderError))
+            {
+                <div class="border-2 border-signal bg-kraft p-3 font-mono text-xs text-signal" role="alert">
+                    @orderError
+                </div>
+            }
+
             @if (showErrors && errorCount > 0)
             {
                 <div class="border-2 border-signal bg-kraft p-3 font-mono text-xs" role="alert">
@@ -183,6 +190,7 @@ else
     private OrderReceipt? receipt;
     private bool sending, showErrors;
     private int errorCount;
+    private string? orderError;
 
     private decimal Shipping => Cart.Shipping(form.Delivery);
     private decimal Total => Cart.Net + Shipping;
@@ -207,9 +215,14 @@ else
         if (sending) return;
         sending = true;
         showErrors = false;
+        orderError = null;
         try
         {
             receipt = await OrderService.PlaceOrderAsync(form, Cart);
+        }
+        catch (Exception ex)
+        {
+            orderError = $"Could not complete order: {ex.Message}";
         }
         finally
         {

@@ -29,3 +29,4 @@ public class ContactService : IContactService
         await _client.From<ContactMessageRecord>().Insert(record, options);
     }
 }
+

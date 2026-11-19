@@ -57,3 +57,4 @@ public class BrewMethodRecord : BaseModel
         Steps = Steps != null ? new List<string>(Steps) : new()
     };
 }
+

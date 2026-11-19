@@ -39,3 +39,4 @@ public class OrderRecord : BaseModel
     [Column("total")]
     public decimal Total { get; set; }
 }
+

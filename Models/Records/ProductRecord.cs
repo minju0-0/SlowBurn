@@ -93,3 +93,4 @@ public class ProductRecord : BaseModel
         Details = p.Details != null ? new List<string>(p.Details) : new()
     };
 }
+

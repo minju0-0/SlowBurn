@@ -18,3 +18,4 @@ public class ContactMessageRecord : BaseModel
     [Column("message")]
     public string Message { get; set; } = "";
 }
+

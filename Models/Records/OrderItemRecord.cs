@@ -24,3 +24,4 @@ public class OrderItemRecord : BaseModel
     [Column("unit_price")]
     public decimal UnitPrice { get; set; }
 }
+
